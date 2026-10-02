@@ -3,12 +3,10 @@ package com.shashank.ecommerce.category.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
-import lombok.Getter;
-import lombok.Setter;
+
 
 @Data
-@Setter
-@Getter
+
 public class AddCategoryRequestDto {
 
     @NotBlank(message = "Category name is required")

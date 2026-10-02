@@ -2,12 +2,9 @@ package com.shashank.ecommerce.category.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
-import lombok.Getter;
-import lombok.Setter;
+
 
 @Entity
-@Setter
-@Getter
 @Data
 public class Category {
     @Id
