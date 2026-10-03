@@ -4,6 +4,7 @@ import com.shashank.ecommerce.user.entity.User;
 import jakarta.persistence.*;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -26,8 +27,17 @@ public class Order {
     @Column(nullable = false)
     private OrderStatus status;
 
-    @Column(nullable = false)
-    private Double totalAmount;
+    @Column(nullable = false, precision = 12, scale = 2)
+    private BigDecimal subtotalAmount;
+
+    @Column(nullable = false, precision = 12, scale = 2)
+    private BigDecimal discountAmount;
+
+    @Column(nullable = false, precision = 12, scale = 2)
+    private BigDecimal totalAmount;
+
+    @Column(length = 50)
+    private String couponCode;
 
     @Column(nullable = false, length = 150)
     private String shippingAddressLine1;

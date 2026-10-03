@@ -1,8 +1,17 @@
 package com.shashank.ecommerce.payment.service.impl;
 
+import com.shashank.ecommerce.cart.entity.Cart;
+import com.shashank.ecommerce.cart.entity.CartItem;
+import com.shashank.ecommerce.cart.repository.CartItemRepository;
+import com.shashank.ecommerce.cart.repository.CartRepository;
+import com.shashank.ecommerce.coupon.entity.Coupon;
+import com.shashank.ecommerce.coupon.repository.CouponRepository;
 import com.shashank.ecommerce.exception.ResourceNotFoundException;
+import com.shashank.ecommerce.inventory.service.InventoryService;
 import com.shashank.ecommerce.order.entity.Order;
+import com.shashank.ecommerce.order.entity.OrderItem;
 import com.shashank.ecommerce.order.entity.OrderStatus;
+import com.shashank.ecommerce.order.repository.OrderItemRepository;
 import com.shashank.ecommerce.order.repository.OrderRepository;
 import com.shashank.ecommerce.payment.dto.CreatePaymentRequestDto;
 import com.shashank.ecommerce.payment.dto.PaymentDto;
@@ -15,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -23,6 +33,15 @@ public class PaymentServiceImpl implements PaymentService {
 
     private final PaymentRepository paymentRepository;
     private final OrderRepository orderRepository;
+
+    private final CouponRepository couponRepository;
+
+    private final CartRepository cartRepository;
+    private final CartItemRepository cartItemRepository;
+
+    private final OrderItemRepository orderItemRepository;
+
+    private final InventoryService inventoryService;
 
     @Override
     @Transactional
@@ -101,10 +120,161 @@ public class PaymentServiceImpl implements PaymentService {
 
         Order order = payment.getOrder();
 
+        // 1. Get order items
+        List<OrderItem> orderItems =
+                orderItemRepository.findByOrderId(orderId);
+
+        // 2. Consume inventory
+        for (OrderItem orderItem : orderItems) {
+
+            inventoryService.consumeStock(
+                    orderItem.getProduct().getId(),
+                    orderItem.getQuantity()
+            );
+        }
+
+        // 3. Mark payment as successful
         payment.setStatus(PaymentStatus.SUCCESS);
         payment.setPaidAt(LocalDateTime.now());
 
+        // 4. Confirm order
         order.setStatus(OrderStatus.CONFIRMED);
+
+        Payment savedPayment = paymentRepository.save(payment);
+        orderRepository.save(order);
+
+        // 5. Increment coupon usage
+        incrementCouponUsage(order);
+
+        // 6. Clear cart
+        clearCart(order);
+
+        return mapToDto(savedPayment);
+    }
+
+    private void incrementCouponUsage(Order order) {
+
+        String couponCode = order.getCouponCode();
+
+        if (couponCode == null || couponCode.isBlank()) {
+            return;
+        }
+
+        Coupon coupon = couponRepository
+                .findByCodeIgnoreCase(couponCode)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Coupon not found: " + couponCode
+                        ));
+
+        coupon.setUsedCount(coupon.getUsedCount() + 1);
+
+        couponRepository.save(coupon);
+    }
+
+    private void clearCart(Order order) {
+
+        Long userId = order.getUser().getId();
+
+        Cart cart = cartRepository.findByUserId(userId)
+                .orElse(null);
+
+        if (cart == null) {
+            return;
+        }
+
+        List<CartItem> cartItems =
+                cartItemRepository.findByCartId(cart.getId());
+
+        if (!cartItems.isEmpty()) {
+            cartItemRepository.deleteAll(cartItems);
+        }
+    }
+
+    @Override
+    @Transactional
+    public PaymentDto markPaymentFailed(Long orderId) {
+
+        Payment payment = paymentRepository.findByOrderId(orderId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Payment not found for order id: " + orderId
+                        ));
+
+        if (payment.getStatus() == PaymentStatus.SUCCESS) {
+            throw new IllegalArgumentException(
+                    "Successful payment cannot be marked as failed"
+            );
+        }
+
+        if (payment.getStatus() == PaymentStatus.REFUNDED) {
+            throw new IllegalArgumentException(
+                    "Refunded payment cannot be marked as failed"
+            );
+        }
+
+        Order order = payment.getOrder();
+
+        List<OrderItem> orderItems =
+                orderItemRepository.findByOrderId(orderId);
+
+        // Release reserved inventory
+        for (OrderItem orderItem : orderItems) {
+
+            inventoryService.releaseStock(
+                    orderItem.getProduct().getId(),
+                    orderItem.getQuantity()
+            );
+        }
+
+        // Mark payment as failed
+        payment.setStatus(PaymentStatus.FAILED);
+
+        // Cancel order
+        order.setStatus(OrderStatus.CANCELLED);
+
+        Payment savedPayment = paymentRepository.save(payment);
+
+        orderRepository.save(order);
+
+        return mapToDto(savedPayment);
+    }
+
+    @Override
+    @Transactional
+    public PaymentDto refundPayment(Long orderId) {
+
+        Payment payment = paymentRepository.findByOrderId(orderId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Payment not found for order id: " + orderId
+                        ));
+
+        if (payment.getStatus() != PaymentStatus.SUCCESS) {
+            throw new IllegalArgumentException(
+                    "Only successful payments can be refunded"
+            );
+        }
+
+        Order order = payment.getOrder();
+
+        List<OrderItem> orderItems =
+                orderItemRepository.findByOrderId(orderId);
+
+        // Restore inventory
+        for (OrderItem orderItem : orderItems) {
+
+            inventoryService.restoreStock(
+                    orderItem.getProduct().getId(),
+                    orderItem.getQuantity()
+            );
+        }
+
+        // Mark payment as refunded
+        payment.setStatus(PaymentStatus.REFUNDED);
+
+        // Cancel order
+        order.setStatus(OrderStatus.CANCELLED);
 
         Payment savedPayment = paymentRepository.save(payment);
 

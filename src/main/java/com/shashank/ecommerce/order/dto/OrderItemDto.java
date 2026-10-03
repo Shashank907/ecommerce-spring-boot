@@ -4,6 +4,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -19,7 +21,7 @@ public class OrderItemDto {
 
     private Integer quantity;
 
-    private Double unitPrice;
+    private BigDecimal unitPrice;
 
-    private Double subtotal;
+    private BigDecimal subtotal;
 }

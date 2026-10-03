@@ -4,6 +4,7 @@ import com.shashank.ecommerce.order.entity.Order;
 import jakarta.persistence.*;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -22,8 +23,8 @@ public class Payment {
     @Column(nullable = false, unique = true, length = 100)
     private String transactionId;
 
-    @Column(nullable = false)
-    private Double amount;
+    @Column(nullable = false, precision = 12, scale = 2)
+    private BigDecimal amount;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

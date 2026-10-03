@@ -12,4 +12,7 @@ public interface PaymentService {
 
     PaymentDto getPaymentByOrderId(Long orderId);
     PaymentDto markPaymentSuccessful(Long orderId);
+    PaymentDto markPaymentFailed(Long orderId);
+
+    PaymentDto refundPayment(Long orderId);
 }

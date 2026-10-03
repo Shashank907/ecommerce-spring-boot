@@ -41,4 +41,15 @@ public class GlobalExceptionHandler {
 
         return error;
     }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public Map<String, String> handleIllegalArgumentException(
+            IllegalArgumentException ex) {
+
+        Map<String, String> error = new HashMap<>();
+        error.put("message", ex.getMessage());
+
+        return error;
+    }
 }

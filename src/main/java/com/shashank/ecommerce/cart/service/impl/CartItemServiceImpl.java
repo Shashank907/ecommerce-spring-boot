@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
@@ -122,7 +123,7 @@ public class CartItemServiceImpl implements CartItemService {
 
         dto.setSubtotal(
                 cartItem.getProduct().getPrice()
-                        * cartItem.getQuantity()
+                        .multiply(BigDecimal.valueOf(cartItem.getQuantity()))
         );
 
         return dto;

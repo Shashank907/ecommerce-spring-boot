@@ -48,4 +48,22 @@ public class PaymentController {
                 paymentService.markPaymentSuccessful(orderId)
         );
     }
+
+    @PostMapping("/failed")
+    public ResponseEntity<PaymentDto> markPaymentFailed(
+            @PathVariable Long orderId) {
+
+        return ResponseEntity.ok(
+                paymentService.markPaymentFailed(orderId)
+        );
+    }
+
+    @PostMapping("/refund")
+    public ResponseEntity<PaymentDto> refundPayment(
+            @PathVariable Long orderId) {
+
+        return ResponseEntity.ok(
+                paymentService.refundPayment(orderId)
+        );
+    }
 }
