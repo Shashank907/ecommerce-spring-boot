@@ -1,7 +1,8 @@
 # E-Commerce Backend
 
-A backend REST API for an e-commerce application built with **Java and Spring Boot**.
-The project follows a layered architecture with separate controllers, services, repositories, DTOs, and entities.
+A production-oriented **e-commerce backend REST API** built with **Java 24 and Spring Boot 4**.
+
+The application follows a layered architecture with separate controllers, services, repositories, DTOs, and entities. It implements the core customer-side e-commerce flow including **cart, coupons, inventory reservation, orders, payments, refunds, cancellation, and order lifecycle management**.
 
 ## 🚀 Features
 
@@ -11,14 +12,21 @@ The project follows a layered architecture with separate controllers, services, 
 * Product management
 * Inventory management
 * Shopping cart
+* Cart items
+* Coupon management
 * Order management
 * Order items
 * Payment management
+* Inventory reservation and stock consumption
+* Order cancellation
+* Payment refund
+* Order status lifecycle
 * Product reviews
 * Wishlist
 * Input validation
 * Global exception handling
 * JPA/Hibernate database integration
+* `BigDecimal` for monetary values
 
 ## 🛠️ Tech Stack
 
@@ -32,7 +40,7 @@ The project follows a layered architecture with separate controllers, services, 
 * **Postman**
 * **Git & GitHub**
 
-## 🏗️ Project Architecture
+## 🏗️ Architecture
 
 The application follows a layered architecture:
 
@@ -67,10 +75,21 @@ src/main/java/com/shashank/ecommerce
 │   ├── repository
 │   └── service
 │
-├── inventory
+├── coupon
+│   ├── controller
 │   ├── dto
 │   ├── entity
-│   └── repository
+│   ├── enums
+│   ├── exception
+│   ├── repository
+│   └── service
+│
+├── inventory
+│   ├── controller
+│   ├── dto
+│   ├── entity
+│   ├── repository
+│   └── service
 │
 ├── order
 │   ├── controller
@@ -119,33 +138,175 @@ src/main/java/com/shashank/ecommerce
 
 ## 📦 Main Modules
 
-| Module    | Description                        |
-| --------- | ---------------------------------- |
-| User      | Customer and admin management      |
-| Address   | User shipping addresses            |
-| Category  | Product categorization             |
-| Product   | Product creation and management    |
-| Inventory | Product stock management           |
-| Cart      | Shopping cart and cart items       |
-| Order     | Order creation and order items     |
-| Payment   | Payment records and payment status |
-| Review    | Product reviews and ratings        |
-| Wishlist  | Wishlist and wishlist items        |
+| Module    | Description                                          |
+| --------- | ---------------------------------------------------- |
+| User      | Customer and admin user management                   |
+| Address   | User shipping addresses                              |
+| Category  | Product categorization                               |
+| Product   | Product creation and management                      |
+| Inventory | Stock, reservation, consumption and restoration      |
+| Cart      | Shopping cart and cart items                         |
+| Coupon    | Coupon creation, validation and discount calculation |
+| Order     | Order creation, cancellation and status lifecycle    |
+| Payment   | Payment records, success, failure and refunds        |
+| Review    | Product reviews and ratings                          |
+| Wishlist  | Customer wishlist management                         |
+
+## 🛒 Checkout Flow
+
+The core customer checkout flow is:
+
+```text
+Add Product to Cart
+        ↓
+Apply Coupon (Optional)
+        ↓
+Create Order
+        ↓
+Reserve Inventory
+        ↓
+Create Payment
+        ↓
+Payment SUCCESS
+        ↓
+Consume Reserved Stock
+        ↓
+Order CONFIRMED
+        ↓
+PROCESSING
+        ↓
+SHIPPED
+        ↓
+DELIVERED
+```
+
+The application also supports cancellation flows.
+
+### Pending Order Cancellation
+
+```text
+Order PENDING
+      ↓
+Cancel Order
+      ↓
+Release Reserved Stock
+      ↓
+Order CANCELLED
+```
+
+### Successful Payment Cancellation
+
+```text
+Payment SUCCESS
+      ↓
+Cancel Order
+      ↓
+Refund Payment
+      ↓
+Restore Inventory
+      ↓
+Order CANCELLED
+```
+
+## 📦 Inventory Management
+
+Inventory maintains:
+
+```text
+quantity
+reservedQuantity
+availableQuantity
+```
+
+Where:
+
+```text
+availableQuantity = quantity - reservedQuantity
+```
+
+During order creation, stock is reserved.
+
+After successful payment, reserved stock is consumed.
+
+When an eligible order is cancelled, reserved stock or consumed stock is restored depending on the order/payment state.
+
+## 💳 Payment Flow
+
+Payments currently support the following states:
+
+```text
+PENDING
+SUCCESS
+FAILED
+REFUNDED
+```
+
+Successful payment:
+
+```text
+Payment PENDING
+      ↓
+Payment SUCCESS
+      ↓
+Order CONFIRMED
+      ↓
+Inventory Consumed
+      ↓
+Cart Cleared
+```
+
+## 📋 Order Lifecycle
+
+Orders support:
+
+```text
+PENDING
+   ↓
+CONFIRMED
+   ↓
+PROCESSING
+   ↓
+SHIPPED
+   ↓
+DELIVERED
+```
+
+Orders can also become:
+
+```text
+CANCELLED
+```
+
+Invalid status transitions are rejected by the service layer.
+
+## 🏷️ Coupon System
+
+The coupon module supports:
+
+* Coupon creation
+* Coupon updates
+* Coupon validation
+* Coupon application
+* Percentage discounts
+* Fixed-amount discounts
+* Minimum order requirements
+* Coupon usage tracking
+* Expiration validation
+
+Coupons can be applied while creating an order.
 
 ## 🗄️ Database
 
 The application uses **MySQL**.
 
-Database configuration is kept outside the source code using environment variables.
+Database credentials are configured through environment variables.
 
 ```properties
 spring.datasource.username=${DB_USERNAME}
 spring.datasource.password=${DB_PASSWORD}
 ```
 
-Set these environment variables before running the application.
-
-Example:
+Set these environment variables before running the application:
 
 ```text
 DB_USERNAME=root
@@ -176,8 +337,6 @@ CREATE DATABASE ecommerce;
 
 ### 4. Configure environment variables
 
-Set:
-
 ```text
 DB_USERNAME=your_mysql_username
 DB_PASSWORD=your_mysql_password
@@ -205,100 +364,151 @@ http://localhost:8080
 
 ## 🔌 API Examples
 
-Some of the available endpoints include:
-
 ### Products
 
 ```http
-GET    /products
-POST   /products
-GET    /products/{id}
-PUT    /products/{id}
-DELETE /products/{id}
+GET    /api/products
+POST   /api/products
+GET    /api/products/{id}
+PUT    /api/products/{id}
+DELETE /api/products/{id}
 ```
 
 ### Cart
 
 ```http
-POST   /users/{userId}/cart
-GET    /users/{userId}/cart
-POST   /users/{userId}/cart/items
-DELETE /users/{userId}/cart/items/{productId}
+POST   /api/users/{userId}/cart
+GET    /api/users/{userId}/cart
+POST   /api/users/{userId}/cart/items
+GET    /api/users/{userId}/cart/items
+DELETE /api/users/{userId}/cart/items/{itemId}
+```
+
+### Orders
+
+```http
+POST /api/users/{userId}/orders
+GET  /api/users/{userId}/orders
+GET  /api/users/{userId}/orders/{orderId}
+PUT  /api/users/{userId}/orders/{orderId}/cancel
+PUT  /api/users/{userId}/orders/{orderId}/status
+```
+
+### Payments
+
+```http
+POST /api/orders/{orderId}/payment
+GET  /api/orders/{orderId}/payment
+POST /api/orders/{orderId}/payment/success
+POST /api/orders/{orderId}/payment/failed
+POST /api/orders/{orderId}/payment/refund
 ```
 
 ### Wishlist
 
 ```http
-POST   /users/{userId}/wishlist
-GET    /users/{userId}/wishlist
-POST   /users/{userId}/wishlist/items/{productId}
-GET    /users/{userId}/wishlist/items
-DELETE /users/{userId}/wishlist/items/{productId}
+POST   /api/users/{userId}/wishlist
+GET    /api/users/{userId}/wishlist
+POST   /api/users/{userId}/wishlist/items/{productId}
+GET    /api/users/{userId}/wishlist/items
+DELETE /api/users/{userId}/wishlist/items/{productId}
 ```
 
 ### Reviews
 
 ```http
-POST   /users/{userId}/products/{productId}/reviews
-GET    /users/{userId}/products/{productId}/reviews
-DELETE /users/{userId}/products/{productId}/reviews/{reviewId}
+POST   /api/users/{userId}/products/{productId}/reviews
+GET    /api/users/{userId}/products/{productId}/reviews
+DELETE /api/users/{userId}/products/{productId}/reviews/{reviewId}
 ```
 
 ## 🧪 API Testing
 
-The APIs can be tested using **Postman**.
+The APIs are tested using **Postman**.
 
-Typical development flow:
+A typical checkout flow is:
 
 ```text
 Create Category
       ↓
 Create Product
       ↓
-Add Inventory
-      ↓
 Create User
       ↓
 Create Address
       ↓
+Create Cart
+      ↓
 Add Product to Cart
+      ↓
+Apply Coupon (Optional)
       ↓
 Create Order
       ↓
+Reserve Inventory
+      ↓
 Create Payment
       ↓
-Add Review / Wishlist
+Payment SUCCESS
+      ↓
+Order CONFIRMED
+      ↓
+PROCESSING
+      ↓
+SHIPPED
+      ↓
+DELIVERED
 ```
 
-## 🔒 Production Improvements
+The core happy-path checkout flow and order lifecycle have been tested end-to-end.
 
-The current project is being developed toward a production-ready backend.
+## 🔒 Production Roadmap
+
+The project is being developed toward a production-ready e-commerce backend.
 
 Planned improvements include:
 
-* BCrypt password hashing
 * JWT authentication
+* BCrypt password hashing
 * Role-based authorization
+* Secure user-specific API access
+* Product search
+* Product filtering
+* Pagination
+* Sorting
 * Improved exception handling
-* BigDecimal for monetary values
 * Additional validation
-* Unit and integration testing
+* Unit testing
+* Integration testing
 * Docker containerization
+* Redis caching
+* Kafka/event-driven features
 * React frontend
 * API documentation
 * Cloud deployment
 
 ## 📌 Project Status
 
-**Backend:** Core modules completed
-
-**Authentication:** Planned
-
-**Frontend:** Planned
-
-**Docker:** Planned
-
-**Deployment:** Planned
+| Component          | Status      |
+| ------------------ | ----------- |
+| User Management    | ✅ Completed |
+| Address Management | ✅ Completed |
+| Category           | ✅ Completed |
+| Product            | ✅ Completed |
+| Cart               | ✅ Completed |
+| Coupon             | ✅ Completed |
+| Inventory          | ✅ Completed |
+| Orders             | ✅ Completed |
+| Payments           | ✅ Completed |
+| Order Lifecycle    | ✅ Completed |
+| Wishlist           | ✅ Completed |
+| Reviews            | ✅ Completed |
+| Authentication     | 🚧 Planned  |
+| Search/Filter/Sort | 🚧 Planned  |
+| Docker             | 🚧 Planned  |
+| Redis/Kafka        | 🚧 Planned  |
+| React Frontend     | 🚧 Planned  |
+| Deployment         | 🚧 Planned  |
 
 ## 👨‍💻 Author
 
