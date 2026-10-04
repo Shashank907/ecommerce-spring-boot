@@ -1,5 +1,6 @@
 package com.shashank.ecommerce.inventory.service.impl;
 
+import com.shashank.ecommerce.exception.ResourceNotFoundException;
 import com.shashank.ecommerce.inventory.dto.InventoryDto;
 import com.shashank.ecommerce.inventory.dto.UpdateInventoryRequestDto;
 import com.shashank.ecommerce.inventory.entity.Inventory;
@@ -7,6 +8,7 @@ import com.shashank.ecommerce.inventory.repository.InventoryRepository;
 import com.shashank.ecommerce.inventory.service.InventoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -15,11 +17,12 @@ public class InventoryServiceImpl implements InventoryService {
     private final InventoryRepository inventoryRepository;
 
     @Override
+
     public InventoryDto getInventoryByProductId(Long productId) {
 
         Inventory inventory = inventoryRepository.findByProductId(productId)
                 .orElseThrow(() ->
-                        new RuntimeException("Inventory not found for product: " + productId));
+                        new ResourceNotFoundException("Inventory not found for product: " + productId));
 
         return mapToDto(inventory);
     }
@@ -31,10 +34,10 @@ public class InventoryServiceImpl implements InventoryService {
 
         Inventory inventory = inventoryRepository.findByProductId(productId)
                 .orElseThrow(() ->
-                        new RuntimeException("Inventory not found for product: " + productId));
+                        new ResourceNotFoundException("Inventory not found for product: " + productId));
 
         if (request.getReservedQuantity() > request.getQuantity()) {
-            throw new RuntimeException(
+            throw new IllegalArgumentException(
                     "Reserved quantity cannot be greater than total quantity"
             );
         }
@@ -52,7 +55,7 @@ public class InventoryServiceImpl implements InventoryService {
 
         Inventory inventory = inventoryRepository.findByProductId(productId)
                 .orElseThrow(() ->
-                        new RuntimeException("Inventory not found for product: " + productId));
+                        new ResourceNotFoundException("Inventory not found for product: " + productId));
 
         int availableQuantity =
                 inventory.getQuantity() - inventory.getReservedQuantity();
@@ -61,17 +64,23 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     @Override
+    @Transactional
     public void reserveStock(Long productId, Integer quantity) {
 
-        Inventory inventory = inventoryRepository.findByProductId(productId)
+        Inventory inventory = inventoryRepository
+                .findByProductIdForUpdate(productId)
                 .orElseThrow(() ->
-                        new RuntimeException("Inventory not found for product: " + productId));
+                        new ResourceNotFoundException(
+                                "Inventory not found for product: " + productId
+                        ));
 
         int availableQuantity =
                 inventory.getQuantity() - inventory.getReservedQuantity();
 
         if (availableQuantity < quantity) {
-            throw new RuntimeException("Insufficient stock");
+            throw new IllegalArgumentException(
+                    "Insufficient stock"
+            );
         }
 
         inventory.setReservedQuantity(
@@ -82,35 +91,18 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     @Override
-    public void releaseStock(Long productId, Integer quantity) {
-
-        Inventory inventory = inventoryRepository.findByProductId(productId)
-                .orElseThrow(() ->
-                        new RuntimeException("Inventory not found for product: " + productId));
-
-        int newReservedQuantity =
-                inventory.getReservedQuantity() - quantity;
-
-        if (newReservedQuantity < 0) {
-            throw new RuntimeException("Invalid reserved quantity");
-        }
-
-        inventory.setReservedQuantity(newReservedQuantity);
-
-        inventoryRepository.save(inventory);
-    }
-
-    @Override
+    @Transactional
     public void consumeStock(Long productId, Integer quantity) {
 
-        Inventory inventory = inventoryRepository.findByProductId(productId)
+        Inventory inventory = inventoryRepository
+                .findByProductIdForUpdate(productId)
                 .orElseThrow(() ->
-                        new RuntimeException(
+                        new ResourceNotFoundException(
                                 "Inventory not found for product: " + productId
                         ));
 
         if (inventory.getReservedQuantity() < quantity) {
-            throw new RuntimeException(
+            throw new IllegalArgumentException(
                     "Insufficient reserved stock for product: " + productId
             );
         }
@@ -127,11 +119,37 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     @Override
+    @Transactional
+    public void releaseStock(Long productId, Integer quantity) {
+
+        Inventory inventory = inventoryRepository
+                .findByProductIdForUpdate(productId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Inventory not found for product: " + productId
+                        ));
+
+        int newReservedQuantity =
+                inventory.getReservedQuantity() - quantity;
+
+        if (newReservedQuantity < 0) {
+            throw new IllegalArgumentException(
+                    "Invalid reserved quantity"
+            );
+        }
+
+        inventory.setReservedQuantity(newReservedQuantity);
+
+        inventoryRepository.save(inventory);
+    }
+    @Override
+    @Transactional
     public void restoreStock(Long productId, Integer quantity) {
 
-        Inventory inventory = inventoryRepository.findByProductId(productId)
+        Inventory inventory = inventoryRepository
+                .findByProductIdForUpdate(productId)
                 .orElseThrow(() ->
-                        new RuntimeException(
+                        new ResourceNotFoundException(
                                 "Inventory not found for product: " + productId
                         ));
 

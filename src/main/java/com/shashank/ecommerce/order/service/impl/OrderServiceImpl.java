@@ -9,6 +9,8 @@ import com.shashank.ecommerce.coupon.dto.response.CouponApplyResponse;
 import com.shashank.ecommerce.coupon.service.CouponService;
 import com.shashank.ecommerce.exception.ResourceNotFoundException;
 import com.shashank.ecommerce.inventory.service.InventoryService;
+import com.shashank.ecommerce.notification.enums.NotificationType;
+import com.shashank.ecommerce.notification.service.NotificationService;
 import com.shashank.ecommerce.order.dto.OrderDto;
 import com.shashank.ecommerce.order.entity.Order;
 import com.shashank.ecommerce.order.entity.OrderItem;
@@ -42,6 +44,7 @@ public class OrderServiceImpl implements OrderService {
     private final CouponService couponService;
     private final InventoryService inventoryService;
     private final PaymentService paymentService;
+    private final NotificationService notificationService;
 
     @Override
     @Transactional
@@ -205,13 +208,19 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public OrderDto getOrderById(Long id) {
+    public OrderDto getOrderById(Long userId, Long orderId) {
 
-        Order order = orderRepository.findById(id)
+        Order order = orderRepository.findById(orderId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
-                                "Order not found with id: " + id
+                                "Order not found with id: " + orderId
                         ));
+
+        if (!order.getUser().getId().equals(userId)) {
+            throw new IllegalArgumentException(
+                    "You are not allowed to access this order"
+            );
+        }
 
         return mapToDto(order);
     }
@@ -226,6 +235,15 @@ public class OrderServiceImpl implements OrderService {
         }
 
         return orderRepository.findByUserId(userId)
+                .stream()
+                .map(this::mapToDto)
+                .toList();
+    }
+
+    @Override
+    public List<OrderDto> getAllOrders() {
+
+        return orderRepository.findAll()
                 .stream()
                 .map(this::mapToDto)
                 .toList();
@@ -289,6 +307,13 @@ public class OrderServiceImpl implements OrderService {
             order.setStatus(OrderStatus.CANCELLED);
 
             orderRepository.save(order);
+
+            notificationService.createNotification(
+                    order.getUser().getId(),
+                    order.getId(),
+                    NotificationType.ORDER_CANCELLED,
+                    "Your order #" + order.getOrderNumber() + " has been cancelled"
+            );
 
             return;
         }
@@ -385,8 +410,38 @@ public class OrderServiceImpl implements OrderService {
         }
 
         order.setStatus(newStatus);
-
         orderRepository.save(order);
+
+        if (newStatus == OrderStatus.PROCESSING) {
+
+            notificationService.createNotification(
+                    order.getUser().getId(),
+                    order.getId(),
+                    NotificationType.ORDER_PROCESSING,
+                    "Your order #" + order.getOrderNumber() + " is now being processed"
+            );
+
+
+            }
+        if (newStatus == OrderStatus.SHIPPED) {
+
+            notificationService.createNotification(
+                    order.getUser().getId(),
+                    order.getId(),
+                    NotificationType.ORDER_SHIPPED,
+                    "Your order #" + order.getOrderNumber() + " has been shipped"
+            );
+        }
+
+        if (newStatus == OrderStatus.DELIVERED) {
+
+            notificationService.createNotification(
+                    order.getUser().getId(),
+                    order.getId(),
+                    NotificationType.ORDER_DELIVERED,
+                    "Your order #" + order.getOrderNumber() + " has been delivered"
+            );
+        }
     }
 
     private OrderDto mapToDto(Order order) {

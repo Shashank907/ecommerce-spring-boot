@@ -1,14 +1,15 @@
 package com.shashank.ecommerce.order.controller;
 
+import com.shashank.ecommerce.order.dto.CreateOrderRequest;
 import com.shashank.ecommerce.order.dto.OrderDto;
 import com.shashank.ecommerce.order.entity.OrderStatus;
 import com.shashank.ecommerce.order.service.OrderService;
+import com.shashank.ecommerce.security.SecurityUtils;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import com.shashank.ecommerce.order.dto.CreateOrderRequest;
 
 import java.util.List;
 
@@ -18,6 +19,7 @@ import java.util.List;
 public class OrderController {
 
     private final OrderService orderService;
+
     @PostMapping
     public ResponseEntity<OrderDto> createOrder(
             @PathVariable Long userId,
@@ -35,21 +37,34 @@ public class OrderController {
     }
 
     @GetMapping
-    public ResponseEntity<List<OrderDto>> getUserOrders(
-            @PathVariable Long userId) {
+    public ResponseEntity<List<OrderDto>> getUserOrders() {
+
+        Long authenticatedUserId =
+                SecurityUtils.getCurrentUser()
+                        .getUser()
+                        .getId();
 
         List<OrderDto> orders =
-                orderService.getUserOrders(userId);
+                orderService.getUserOrders(authenticatedUserId);
 
         return ResponseEntity.ok(orders);
     }
 
     @GetMapping("/{orderId}")
     public ResponseEntity<OrderDto> getOrderById(
+            @PathVariable Long userId,
             @PathVariable Long orderId) {
 
+        Long authenticatedUserId =
+                SecurityUtils.getCurrentUser()
+                        .getUser()
+                        .getId();
+
         OrderDto order =
-                orderService.getOrderById(orderId);
+                orderService.getOrderById(
+                        authenticatedUserId,
+                        orderId
+                );
 
         return ResponseEntity.ok(order);
     }
@@ -59,7 +74,15 @@ public class OrderController {
             @PathVariable Long userId,
             @PathVariable Long orderId) {
 
-        orderService.cancelOrder(userId, orderId);
+        Long authenticatedUserId =
+                SecurityUtils.getCurrentUser()
+                        .getUser()
+                        .getId();
+
+        orderService.cancelOrder(
+                authenticatedUserId,
+                orderId
+        );
 
         return ResponseEntity.noContent().build();
     }

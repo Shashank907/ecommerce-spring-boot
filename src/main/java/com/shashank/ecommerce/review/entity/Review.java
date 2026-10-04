@@ -3,6 +3,8 @@ package com.shashank.ecommerce.review.entity;
 import com.shashank.ecommerce.product.entity.Product;
 import com.shashank.ecommerce.user.entity.User;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -31,6 +33,8 @@ public class Review {
     @JoinColumn(name = "product_id", nullable = false)
     private Product product;
 
+    @Min(1)
+    @Max(5)
     @Column(nullable = false)
     private Integer rating;
 

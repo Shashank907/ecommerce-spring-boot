@@ -8,6 +8,8 @@ import com.shashank.ecommerce.coupon.entity.Coupon;
 import com.shashank.ecommerce.coupon.repository.CouponRepository;
 import com.shashank.ecommerce.exception.ResourceNotFoundException;
 import com.shashank.ecommerce.inventory.service.InventoryService;
+import com.shashank.ecommerce.notification.enums.NotificationType;
+import com.shashank.ecommerce.notification.service.NotificationService;
 import com.shashank.ecommerce.order.entity.Order;
 import com.shashank.ecommerce.order.entity.OrderItem;
 import com.shashank.ecommerce.order.entity.OrderStatus;
@@ -42,6 +44,9 @@ public class PaymentServiceImpl implements PaymentService {
     private final OrderItemRepository orderItemRepository;
 
     private final InventoryService inventoryService;
+
+
+    private final NotificationService notificationService;
 
     @Override
     @Transactional
@@ -107,9 +112,7 @@ public class PaymentServiceImpl implements PaymentService {
                         ));
 
         if (payment.getStatus() == PaymentStatus.SUCCESS) {
-            throw new IllegalArgumentException(
-                    "Payment is already successful"
-            );
+           return mapToDto(payment);
         }
 
         if (payment.getStatus() == PaymentStatus.REFUNDED) {
@@ -137,16 +140,34 @@ public class PaymentServiceImpl implements PaymentService {
         payment.setStatus(PaymentStatus.SUCCESS);
         payment.setPaidAt(LocalDateTime.now());
 
+
+
         // 4. Confirm order
         order.setStatus(OrderStatus.CONFIRMED);
 
         Payment savedPayment = paymentRepository.save(payment);
         orderRepository.save(order);
+         //5. Create notification
+        notificationService.createNotification(
+                order.getUser().getId(),
+                order.getId(),
+                NotificationType.PAYMENT_SUCCESS,
+                "Payment successful for order #" + order.getOrderNumber()
+        );
 
-        // 5. Increment coupon usage
+        notificationService.createNotification(
+                order.getUser().getId(),
+                order.getId(),
+                NotificationType.ORDER_CONFIRMED,
+                "Your order #" + order.getOrderNumber() + " has been confirmed"
+        );
+
+
+
+        // 6. Increment coupon usage
         incrementCouponUsage(order);
 
-        // 6. Clear cart
+        // 7. Clear cart
         clearCart(order);
 
         return mapToDto(savedPayment);
@@ -237,6 +258,20 @@ public class PaymentServiceImpl implements PaymentService {
 
         orderRepository.save(order);
 
+        notificationService.createNotification(
+                order.getUser().getId(),
+                order.getId(),
+                NotificationType.PAYMENT_FAILED,
+                "Payment failed for order #" + order.getOrderNumber()
+        );
+
+        notificationService.createNotification(
+                order.getUser().getId(),
+                order.getId(),
+                NotificationType.ORDER_CANCELLED,
+                "Your order #" + order.getOrderNumber() + " has been cancelled"
+        );
+
         return mapToDto(savedPayment);
     }
 
@@ -279,6 +314,20 @@ public class PaymentServiceImpl implements PaymentService {
         Payment savedPayment = paymentRepository.save(payment);
 
         orderRepository.save(order);
+
+        notificationService.createNotification(
+                order.getUser().getId(),
+                order.getId(),
+                NotificationType.PAYMENT_REFUNDED,
+                "Payment for order #" + order.getOrderNumber() + " has been refunded"
+        );
+
+        notificationService.createNotification(
+                order.getUser().getId(),
+                order.getId(),
+                NotificationType.ORDER_CANCELLED,
+                "Your order #" + order.getOrderNumber() + " has been cancelled"
+        );
 
         return mapToDto(savedPayment);
     }

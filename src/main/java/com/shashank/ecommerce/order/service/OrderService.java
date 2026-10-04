@@ -9,11 +9,15 @@ public interface OrderService {
 
     OrderDto createOrder(Long userId, String couponCode);
 
-    OrderDto getOrderById(Long id);
+    OrderDto getOrderById(Long userId, Long orderId);
 
     List<OrderDto> getUserOrders(Long userId);
+
+    List<OrderDto> getAllOrders();
 
     void cancelOrder(Long userId, Long orderId);
 
     void updateOrderStatus(Long orderId, OrderStatus newStatus);
+
+
 }

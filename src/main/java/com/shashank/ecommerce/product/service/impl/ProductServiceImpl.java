@@ -10,11 +10,18 @@ import com.shashank.ecommerce.product.dto.ProductDto;
 import com.shashank.ecommerce.product.entity.Product;
 import com.shashank.ecommerce.product.repository.ProductRepository;
 import com.shashank.ecommerce.product.service.ProductService;
+import com.shashank.ecommerce.product.specification.ProductSpecification;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
@@ -62,6 +69,143 @@ public class ProductServiceImpl implements ProductService {
     public List<ProductDto> getAllProducts() {
 
         return productRepository.findAll()
+                .stream()
+                .map(this::mapToDto)
+                .toList();
+    }
+
+    @Override
+    public List<ProductDto> getProductsByCategoryAndPrice(
+            Long categoryId,
+            BigDecimal minPrice,
+            BigDecimal maxPrice) {
+
+        return productRepository
+                .findByCategoryIdAndPriceBetween(
+                        categoryId,
+                        minPrice,
+                        maxPrice
+                )
+                .stream()
+                .map(this::mapToDto)
+                .toList();
+    }
+    @Override
+    public Page<ProductDto> filterProducts(
+            String name,
+            Long categoryId,
+            String brand,
+            BigDecimal minPrice,
+            BigDecimal maxPrice,
+            String sortBy,
+            String sortDir,
+            int page,
+            int size) {
+
+        Specification<Product> specification = null;
+
+        if (name != null && !name.isBlank()) {
+            specification = ProductSpecification.hasName(name);
+        }
+
+        if (brand != null && !brand.isBlank()) {
+            Specification<Product> brandSpec =
+                    ProductSpecification.hasBrand(brand);
+
+            specification = specification == null
+                    ? brandSpec
+                    : specification.and(brandSpec);
+        }
+
+        if (categoryId != null) {
+            Specification<Product> categorySpec =
+                    ProductSpecification.hasCategory(categoryId);
+
+            specification = specification == null
+                    ? categorySpec
+                    : specification.and(categorySpec);
+        }
+
+        if (minPrice != null) {
+            Specification<Product> minPriceSpec =
+                    ProductSpecification.hasMinPrice(minPrice);
+
+            specification = specification == null
+                    ? minPriceSpec
+                    : specification.and(minPriceSpec);
+        }
+
+        if (maxPrice != null) {
+            Specification<Product> maxPriceSpec =
+                    ProductSpecification.hasMaxPrice(maxPrice);
+
+            specification = specification == null
+                    ? maxPriceSpec
+                    : specification.and(maxPriceSpec);
+        }
+
+
+
+        Sort sort = sortDir.equalsIgnoreCase("desc")
+                ? Sort.by(sortBy).descending()
+                : Sort.by(sortBy).ascending();
+
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        Page<Product> products = specification == null
+                ? productRepository.findAll(pageable)
+                : productRepository.findAll(specification, pageable);
+
+        return products.map(this::mapToDto);
+    }
+
+    @Override
+    public List<ProductDto> searchProducts(String name) {
+
+        return productRepository
+                .findByNameContainingIgnoreCase(name)
+                .stream()
+                .map(this::mapToDto)
+                .toList();
+    }
+
+    @Override
+    public List<ProductDto> getProductsByMinPrice(BigDecimal minPrice) {
+
+        return productRepository
+                .findByPriceGreaterThanEqual(minPrice)
+                .stream()
+                .map(this::mapToDto)
+                .toList();
+    }
+
+    @Override
+    public List<ProductDto> getProductsByMaxPrice(BigDecimal maxPrice) {
+
+        return productRepository
+                .findByPriceLessThanEqual(maxPrice)
+                .stream()
+                .map(this::mapToDto)
+                .toList();
+    }
+
+    @Override
+    public List<ProductDto> getProductsByPriceRange(
+            BigDecimal minPrice,
+            BigDecimal maxPrice) {
+
+        return productRepository
+                .findByPriceBetween(minPrice, maxPrice)
+                .stream()
+                .map(this::mapToDto)
+                .toList();
+    }
+
+    @Override
+    public List<ProductDto> getProductsByCategory(Long categoryId) {
+
+        return productRepository
+                .findByCategoryId(categoryId)
                 .stream()
                 .map(this::mapToDto)
                 .toList();

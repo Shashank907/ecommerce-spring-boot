@@ -5,10 +5,12 @@ import com.shashank.ecommerce.product.dto.ProductDto;
 import com.shashank.ecommerce.product.service.ProductService;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -29,10 +31,41 @@ public class ProductController {
                 .body(createdProduct);
     }
 
-    @GetMapping
-    public ResponseEntity<List<ProductDto>> getAllProducts() {
 
-        List<ProductDto> products = productService.getAllProducts();
+
+    @GetMapping
+    public ResponseEntity<Page<ProductDto>> getProducts(
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) String brand,
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice,
+            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = "asc") String sortDir,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        Page<ProductDto> products = productService.filterProducts(
+                name,
+                categoryId,
+                brand,
+                minPrice,
+                maxPrice,
+                sortBy,
+                sortDir,
+                page,
+                size
+        );
+
+        return ResponseEntity.ok(products);
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<ProductDto>> searchProducts(
+            @RequestParam String name) {
+
+        List<ProductDto> products =
+                productService.searchProducts(name);
 
         return ResponseEntity.ok(products);
     }
