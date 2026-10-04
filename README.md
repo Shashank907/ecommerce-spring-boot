@@ -2,41 +2,179 @@
 
 A production-oriented **e-commerce backend REST API** built with **Java 24 and Spring Boot 4**.
 
-The application follows a layered architecture with separate controllers, services, repositories, DTOs, and entities. It implements the core customer-side e-commerce flow including **cart, coupons, inventory reservation, orders, payments, refunds, cancellation, and order lifecycle management**.
+The project implements a complete customer-side e-commerce workflow including **authentication, products, cart, coupons, inventory reservation, orders, payments, refunds, reviews, wishlist, notifications, and order lifecycle management**.
+
+The application follows a layered architecture with separate controllers, services, repositories, DTOs, and entities.
 
 ## 🚀 Features
 
-* User management
-* Address management
+### 👤 User & Authentication
+
+* User registration and login
+* JWT-based authentication
+* Role-based authorization
+* Customer and Admin roles
+* Account status management
+* BCrypt password encryption
+* Protected API endpoints
+* Custom authentication and access-denied handlers
+
+### 🛍️ Product Management
+
+* Product CRUD operations
 * Category management
-* Product management
-* Inventory management
-* Shopping cart
-* Cart items
-* Coupon management
-* Order management
-* Order items
-* Payment management
-* Inventory reservation and stock consumption
-* Order cancellation
-* Payment refund
-* Order status lifecycle
-* Product reviews
-* Wishlist
+* Product search
+* Product filtering
+* Sorting
+* Pagination
 * Input validation
+
+### 🛒 Shopping Cart
+
+* Add products to cart
+* Update cart quantity
+* Remove cart items
+* Cart total calculation
+* Automatic cart clearing after successful payment
+
+### 🎟️ Coupons
+
+* Coupon creation and management
+* Percentage/fixed discounts
+* Coupon validation
+* Minimum order requirements
+* Expiry and active status
+* Coupon usage tracking
+* Admin coupon management
+
+### 📦 Inventory
+
+* Product stock management
+* Available stock calculation
+* Inventory reservation during checkout
+* Stock consumption after successful payment
+* Stock release after cancellation
+* Stock restoration after refund
+* Pessimistic locking for concurrent stock updates
+
+### 📋 Orders
+
+* Order creation
+* Order items
+* Shipping address snapshot
+* Order ownership authorization
+* Order cancellation
+* Admin order management
+* Order status lifecycle
+
+Order lifecycle:
+
+```text
+PENDING
+   ↓
+CONFIRMED
+   ↓
+PROCESSING
+   ↓
+SHIPPED
+   ↓
+DELIVERED
+```
+
+Orders can also be cancelled according to the applicable business rules.
+
+### 💳 Payments
+
+* Payment creation
+* Payment status management
+* Payment success/failure handling
+* Payment refunds
+* Transaction IDs
+* Payment idempotency
+* BigDecimal-based monetary calculations
+
+Payment flow:
+
+```text
+Order Created
+      ↓
+Payment PENDING
+      ↓
+Payment SUCCESS
+      ↓
+Order CONFIRMED
+      ↓
+Inventory Consumed
+      ↓
+Cart Cleared
+```
+
+### 🔔 Notifications
+
+Notifications are generated for important order and payment events:
+
+* Order confirmed
+* Order processing
+* Order shipped
+* Order delivered
+* Order cancelled
+* Payment successful
+* Payment failed
+* Payment refunded
+
+### ⭐ Reviews & Wishlist
+
+* Product reviews
+* 1–5 star ratings
+* One review per user per product
+* Wishlist management
+* Wishlist items
+
+### 👨‍💼 Admin
+
+Admin functionality includes:
+
+* Dashboard
+* User management
+* Product inventory overview
+* Order management
+* Order status updates
+* Coupon management
+* Revenue overview
+* Pending order tracking
+
+### 🛡️ Security
+
+* Spring Security
+* JWT authentication
+* Role-based authorization
+* Stateless authentication
+* Protected admin endpoints
+* Custom `401 Unauthorized` response
+* Custom `403 Forbidden` response
+* Resource-level order authorization
+
+### ⚠️ Error Handling
+
 * Global exception handling
-* JPA/Hibernate database integration
-* `BigDecimal` for monetary values
+* Custom resource-not-found exceptions
+* Validation error handling
+* Consistent API error responses
 
 ## 🛠️ Tech Stack
 
 * **Java 24**
 * **Spring Boot 4**
+* **Spring Security**
 * **Spring Data JPA**
 * **Hibernate**
 * **MySQL 8**
 * **Maven**
 * **Lombok**
+* **ModelMapper**
+* **JWT**
+* **Docker**
+* **Docker Compose**
 * **Postman**
 * **Git & GitHub**
 
@@ -46,20 +184,32 @@ The application follows a layered architecture:
 
 ```text
 Controller
-    ↓
+     ↓
 Service
-    ↓
+     ↓
 Repository
-    ↓
+     ↓
 Database
 ```
 
 DTOs are used to transfer data between the API and client instead of exposing entities directly.
 
-### Package Structure
+Business logic is kept inside the service layer, while repositories handle database access.
+
+## 📁 Package Structure
 
 ```text
 src/main/java/com/shashank/ecommerce
+│
+├── admin
+│   ├── controller
+│   ├── dto
+│   └── service
+│
+├── auth
+│   ├── controller
+│   ├── dto
+│   └── service
 │
 ├── cart
 │   ├── controller
@@ -79,14 +229,17 @@ src/main/java/com/shashank/ecommerce
 │   ├── controller
 │   ├── dto
 │   ├── entity
-│   ├── enums
-│   ├── exception
 │   ├── repository
 │   └── service
 │
 ├── inventory
 │   ├── controller
 │   ├── dto
+│   ├── entity
+│   ├── repository
+│   └── service
+│
+├── notification
 │   ├── entity
 │   ├── repository
 │   └── service
@@ -119,406 +272,189 @@ src/main/java/com/shashank/ecommerce
 │   ├── repository
 │   └── service
 │
-├── user
-│   ├── controller
-│   ├── dto
-│   ├── entity
-│   ├── repository
+├── security
+│   ├── config
+│   ├── filter
+│   ├── handler
 │   └── service
 │
-├── wishlist
-│   ├── controller
-│   ├── dto
-│   ├── entity
-│   ├── repository
-│   └── service
-│
-└── exception
+└── wishlist
+    ├── controller
+    ├── dto
+    ├── entity
+    ├── repository
+    └── service
 ```
 
-## 📦 Main Modules
+## 🐳 Docker
 
-| Module    | Description                                          |
-| --------- | ---------------------------------------------------- |
-| User      | Customer and admin user management                   |
-| Address   | User shipping addresses                              |
-| Category  | Product categorization                               |
-| Product   | Product creation and management                      |
-| Inventory | Stock, reservation, consumption and restoration      |
-| Cart      | Shopping cart and cart items                         |
-| Coupon    | Coupon creation, validation and discount calculation |
-| Order     | Order creation, cancellation and status lifecycle    |
-| Payment   | Payment records, success, failure and refunds        |
-| Review    | Product reviews and ratings                          |
-| Wishlist  | Customer wishlist management                         |
+The application can be run using Docker Compose.
 
-## 🛒 Checkout Flow
-
-The core customer checkout flow is:
+The Docker setup contains:
 
 ```text
-Add Product to Cart
-        ↓
-Apply Coupon (Optional)
-        ↓
+Docker Compose
+│
+├── Spring Boot Application
+│   └── Java 24
+│
+└── MySQL 8
+```
+
+The Spring Boot application runs inside the container on port `8080`.
+
+For local access, Docker maps it to:
+
+```text
+http://localhost:8081
+```
+
+MySQL is kept inside the Docker network and is accessed by the application using:
+
+```text
+mysql:3306
+```
+
+A persistent Docker volume is used for MySQL data.
+
+### Run with Docker
+
+```bash
+docker compose up -d
+```
+
+Check running containers:
+
+```bash
+docker compose ps
+```
+
+View application logs:
+
+```bash
+docker logs ecommerce-app
+```
+
+Stop the application:
+
+```bash
+docker compose down
+```
+
+### Environment Variables
+
+Sensitive configuration is stored in a local `.env` file.
+
+Example:
+
+```env
+MYSQL_ROOT_PASSWORD=your_password
+SPRING_DATASOURCE_PASSWORD=your_password
+```
+
+The `.env` file is excluded from Git using `.gitignore`.
+
+## 🔄 Complete Checkout Flow
+
+The main customer checkout flow is:
+
+```text
+Cart
+  ↓
+Apply Coupon
+  ↓
 Create Order
-        ↓
-Reserve Inventory
-        ↓
-Create Payment
-        ↓
-Payment SUCCESS
-        ↓
-Consume Reserved Stock
-        ↓
-Order CONFIRMED
-        ↓
-PROCESSING
-        ↓
-SHIPPED
-        ↓
-DELIVERED
-```
-
-The application also supports cancellation flows.
-
-### Pending Order Cancellation
-
-```text
-Order PENDING
-      ↓
-Cancel Order
-      ↓
-Release Reserved Stock
-      ↓
-Order CANCELLED
-```
-
-### Successful Payment Cancellation
-
-```text
-Payment SUCCESS
-      ↓
-Cancel Order
-      ↓
-Refund Payment
-      ↓
-Restore Inventory
-      ↓
-Order CANCELLED
-```
-
-## 📦 Inventory Management
-
-Inventory maintains:
-
-```text
-quantity
-reservedQuantity
-availableQuantity
-```
-
-Where:
-
-```text
-availableQuantity = quantity - reservedQuantity
-```
-
-During order creation, stock is reserved.
-
-After successful payment, reserved stock is consumed.
-
-When an eligible order is cancelled, reserved stock or consumed stock is restored depending on the order/payment state.
-
-## 💳 Payment Flow
-
-Payments currently support the following states:
-
-```text
-PENDING
-SUCCESS
-FAILED
-REFUNDED
-```
-
-Successful payment:
-
-```text
+  ↓
+Validate Inventory
+  ↓
+Reserve Stock
+  ↓
 Payment PENDING
-      ↓
+  ↓
 Payment SUCCESS
-      ↓
+  ↓
+Consume Inventory
+  ↓
+Clear Cart
+  ↓
 Order CONFIRMED
-      ↓
-Inventory Consumed
-      ↓
-Cart Cleared
-```
-
-## 📋 Order Lifecycle
-
-Orders support:
-
-```text
-PENDING
-   ↓
-CONFIRMED
-   ↓
+  ↓
 PROCESSING
-   ↓
+  ↓
 SHIPPED
-   ↓
+  ↓
 DELIVERED
 ```
 
-Orders can also become:
+Cancellation and refund flows restore inventory where applicable.
+
+## 💰 Money Handling
+
+All monetary values use Java `BigDecimal` instead of floating-point types.
+
+This avoids precision problems when handling:
+
+* Product prices
+* Cart totals
+* Discounts
+* Order totals
+* Payments
+* Refunds
+* Revenue
+
+## 🔐 Security Design
+
+Authentication flow:
 
 ```text
-CANCELLED
+User Login
+    ↓
+Spring Security
+    ↓
+AuthenticationManager
+    ↓
+JWT Generated
+    ↓
+Client
+    ↓
+Authorization Header
+    ↓
+JWT Filter
+    ↓
+SecurityContext
+    ↓
+Protected Endpoint
 ```
 
-Invalid status transitions are rejected by the service layer.
-
-## 🏷️ Coupon System
-
-The coupon module supports:
-
-* Coupon creation
-* Coupon updates
-* Coupon validation
-* Coupon application
-* Percentage discounts
-* Fixed-amount discounts
-* Minimum order requirements
-* Coupon usage tracking
-* Expiration validation
-
-Coupons can be applied while creating an order.
-
-## 🗄️ Database
-
-The application uses **MySQL**.
-
-Database credentials are configured through environment variables.
-
-```properties
-spring.datasource.username=${DB_USERNAME}
-spring.datasource.password=${DB_PASSWORD}
-```
-
-Set these environment variables before running the application:
+Admin APIs are protected using role-based authorization.
 
 ```text
-DB_USERNAME=root
-DB_PASSWORD=your_password
+CUSTOMER → Customer APIs
+ADMIN    → Admin APIs
 ```
 
-> Never commit real database credentials to GitHub.
-
-## ▶️ Running the Project
-
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/Shashank907/ecommerce-spring-boot.git
-```
-
-### 2. Navigate into the project
-
-```bash
-cd ecommerce-spring-boot
-```
-
-### 3. Create the MySQL database
-
-```sql
-CREATE DATABASE ecommerce;
-```
-
-### 4. Configure environment variables
-
-```text
-DB_USERNAME=your_mysql_username
-DB_PASSWORD=your_mysql_password
-```
-
-### 5. Run the application
-
-Using Maven:
-
-```bash
-./mvnw spring-boot:run
-```
-
-On Windows:
-
-```powershell
-.\mvnw.cmd spring-boot:run
-```
-
-The application runs on:
-
-```text
-http://localhost:8080
-```
-
-## 🔌 API Examples
-
-### Products
-
-```http
-GET    /api/products
-POST   /api/products
-GET    /api/products/{id}
-PUT    /api/products/{id}
-DELETE /api/products/{id}
-```
-
-### Cart
-
-```http
-POST   /api/users/{userId}/cart
-GET    /api/users/{userId}/cart
-POST   /api/users/{userId}/cart/items
-GET    /api/users/{userId}/cart/items
-DELETE /api/users/{userId}/cart/items/{itemId}
-```
-
-### Orders
-
-```http
-POST /api/users/{userId}/orders
-GET  /api/users/{userId}/orders
-GET  /api/users/{userId}/orders/{orderId}
-PUT  /api/users/{userId}/orders/{orderId}/cancel
-PUT  /api/users/{userId}/orders/{orderId}/status
-```
-
-### Payments
-
-```http
-POST /api/orders/{orderId}/payment
-GET  /api/orders/{orderId}/payment
-POST /api/orders/{orderId}/payment/success
-POST /api/orders/{orderId}/payment/failed
-POST /api/orders/{orderId}/payment/refund
-```
-
-### Wishlist
-
-```http
-POST   /api/users/{userId}/wishlist
-GET    /api/users/{userId}/wishlist
-POST   /api/users/{userId}/wishlist/items/{productId}
-GET    /api/users/{userId}/wishlist/items
-DELETE /api/users/{userId}/wishlist/items/{productId}
-```
-
-### Reviews
-
-```http
-POST   /api/users/{userId}/products/{productId}/reviews
-GET    /api/users/{userId}/products/{productId}/reviews
-DELETE /api/users/{userId}/products/{productId}/reviews/{reviewId}
-```
-
-## 🧪 API Testing
-
-The APIs are tested using **Postman**.
-
-A typical checkout flow is:
-
-```text
-Create Category
-      ↓
-Create Product
-      ↓
-Create User
-      ↓
-Create Address
-      ↓
-Create Cart
-      ↓
-Add Product to Cart
-      ↓
-Apply Coupon (Optional)
-      ↓
-Create Order
-      ↓
-Reserve Inventory
-      ↓
-Create Payment
-      ↓
-Payment SUCCESS
-      ↓
-Order CONFIRMED
-      ↓
-PROCESSING
-      ↓
-SHIPPED
-      ↓
-DELIVERED
-```
-
-The core happy-path checkout flow and order lifecycle have been tested end-to-end.
-
-## 🔒 Production Roadmap
-
-The project is being developed toward a production-ready e-commerce backend.
+## 📌 Future Improvements
 
 Planned improvements include:
 
-* JWT authentication
-* BCrypt password hashing
-* Role-based authorization
-* Secure user-specific API access
-* Product search
-* Product filtering
-* Pagination
-* Sorting
-* Improved exception handling
-* Additional validation
-* Unit testing
-* Integration testing
-* Docker containerization
-* Redis caching
-* Kafka/event-driven features
 * React frontend
-* API documentation
-* Cloud deployment
-
-## 📌 Project Status
-
-| Component          | Status      |
-| ------------------ | ----------- |
-| User Management    | ✅ Completed |
-| Address Management | ✅ Completed |
-| Category           | ✅ Completed |
-| Product            | ✅ Completed |
-| Cart               | ✅ Completed |
-| Coupon             | ✅ Completed |
-| Inventory          | ✅ Completed |
-| Orders             | ✅ Completed |
-| Payments           | ✅ Completed |
-| Order Lifecycle    | ✅ Completed |
-| Wishlist           | ✅ Completed |
-| Reviews            | ✅ Completed |
-| Authentication     | 🚧 Planned  |
-| Search/Filter/Sort | 🚧 Planned  |
-| Docker             | 🚧 Planned  |
-| Redis/Kafka        | 🚧 Planned  |
-| React Frontend     | 🚧 Planned  |
-| Deployment         | 🚧 Planned  |
+* Production deployment
+* AWS deployment
+* Redis caching
+* Kafka-based asynchronous events
+* Automated testing
+* Payment gateway integration
+* Email/SMS notifications
+* CI/CD pipeline
 
 ## 👨‍💻 Author
 
 **Shashank Shekhar Pandey**
 
-B.Tech Computer Science & Engineering
+Java Backend Developer | Spring Boot | REST APIs | MySQL
 
-GitHub:
-https://github.com/Shashank907
+GitHub: `Shashank907`
 
 ## 📄 License
 
-This project is currently intended for learning, portfolio development, and demonstration purposes.
+This project is intended for learning, portfolio development, and demonstration of backend engineering concepts.
